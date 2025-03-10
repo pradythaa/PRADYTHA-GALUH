@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualisasi Data Tindak Pidana Indonesia</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        header {
+            background-color: #1a237e;
+            color: white;
+            padding: 20px 0;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        header h1 {
+            margin: 0;
+            font-weight: 300;
+            font-size: 2.5rem;
+        }
+        header p {
+            margin: 10px 0 0;
+            opacity: 0.8;
+        }
+        .chart-container {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        .chart-title {
+            font-size: 1.5rem;
+            margin-top: 0;
+            margin-bottom: 20px;
+            color: #303f9f;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        .row {
+            display: flex;
+            flex-wrap: wrap;
+            margin: 0 -15px;
+        }
+        .col-md-6 {
+            flex: 0 0 calc(50% - 30px);
+            margin: 0 15px 30px;
+        }
+        .col-md-12 {
+            flex: 0 0 calc(100% - 30px);
+            margin: 0 15px 30px;
+        }
+        .statistics {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        .stat-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #303f9f;
+        }
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1a237e;
+            margin-bottom: 5px;
+        }
+        .stat-description {
+            color: #666;
+            font-size: 0.9rem;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #e8eaf6;
+            color: #303f9f;
+        }
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+        .heatmap-cell {
+            transition: all 0.2s ease;
+        }
+        .heatmap-cell:hover {
+            stroke: #333;
+            stroke-width: 2;
+        }
+        .heatmap-tooltip {
+            position: absolute;
+            background-color: rgba(0,0,0,0.8);
+            color: white;
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 14px;
+            pointer-events: none;
+            display: none;
+        }
+        @media (max-width: 768px) {
+            .col-md-6 {
+                flex: 0 0 calc(100% - 30px);
+            }
+        }
+        .insight-card {
+            background-color: #e8f5e9;
+            border-left: 4px solid #43a047;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+        }
+        .warning-card {
+            background-color: #fff3e0;
+            border-left: 4px solid #ef6c00;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>Analisis Tindak Pidana di Indonesia</h1>
+            <p>Visualisasi data tindak pidana di Indonesia berdasarkan Kepolisian Daerah (2021-2023)</p>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="statistics">
+                    <div class="stat-title">Total Tindak Pidana 2023</div>
+                    <div class="stat-value" id="total-2023">584,991</div>
+                    <div class="stat-description">Jumlah tindak pidana yang terjadi di seluruh Indonesia pada tahun 2023</div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="statistics">
+                    <div class="stat-title">Kenaikan dari 2021-2023</div>
+                    <div class="stat-value" id="growth-percentage">144.3%</div>
+                    <div class="stat-description">Persentase peningkatan tindak pidana dalam 3 tahun terakhir</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-12">
+                <div class="chart-container">
+                    <h2 class="chart-title">Tren Nasional Tindak Pidana (2021-2023)</h2>
+                    <canvas id="trendChart" height="100"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="chart-container">
+                    <h2 class="chart-title">5 Daerah dengan Tindak Pidana Tertinggi (2023)</h2>
+                    <canvas id="topRegionsChart" height="250"></canvas>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="chart-container">
+                    <h2 class="chart-title">Proporsi Tindak Pidana berdasarkan Wilayah (2023)</h2>
+                    <canvas id="regionPieChart" height="250"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-12">
+                <div class="chart-container">
+                    <h2 class="chart-title">Heatmap Tindak Pidana per Daerah (2021-2023)</h2>
+                    <div id="heatmap"></div>
+                    <div class="heatmap-tooltip" id="heatmapTooltip"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-12">
+                <div class="chart-container">
+                    <h2 class="chart-title">5 Daerah dengan Kenaikan Tertinggi (2021-2023)</h2>
+                    <canvas id="growthChart" height="150"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-12">
+                <div class="chart-container">
+                    <h2 class="chart-title">Temuan Penting</h2>
+                    <div class="insight-card">
+                        <strong>Peningkatan Drastis di Metro Jaya:</strong> Kenaikan jumlah tindak pidana di Metro Jaya dari 32,534 (2022) menjadi 87,426 (2023) menunjukkan peningkatan yang sangat signifikan sebesar 168.7%.
+                    </div>
+                    <div class="insight-card">
+                        <strong>Konsentrasi di Pulau Jawa:</strong> Pulau Jawa mendominasi dengan sekitar 60% dari total tindak pidana nasional di tahun 2023, dengan Metro Jaya dan Jawa Timur sebagai kontributor utama.
+                    </div>
+                    <div class="warning-card">
+                        <strong>Daerah dengan Peningkatan Pesat:</strong> Daerah seperti Jawa Barat mengalami peningkatan hampir 510% dari 2021 ke 2023, mengindikasikan perlunya perhatian khusus untuk penanganan keamanan di wilayah tersebut.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Data tindak pidana
+        const data = {
+            daerah: [
+                'ACEH', 'SUMATERA UTARA', 'SUMATERA BARAT', 'RIAU', 'JAMBI', 
+                'SUMATERA SELATAN', 'BENGKULU', 'LAMPUNG', 'KEP. BANGKA BELITUNG', 
+                'KEP. RIAU', 'METRO JAYA', 'JAWA BARAT', 'JAWA TENGAH', 
+                'DI YOGYAKARTA', 'JAWA TIMUR', 'BANTEN', 'BALI', 
+                'NUSA TENGGARA BARAT', 'NUSA TENGGARA TIMUR', 'KALIMANTAN BARAT', 
+                'KALIMANTAN TENGAH', 'KALIMANTAN SELATAN', 'KALIMANTAN TIMUR', 
+                'KALIMANTAN UTARA', 'SULAWESI UTARA', 'SULAWESI TENGAH', 
+                'SULAWESI SELATAN', 'SULAWESI TENGGARA', 'GORONTALO', 
+                'SULAWESI BARAT', 'MALUKU', 'MALUKU UTARA', 'PAPUA BARAT', 
+                'PAPUA', 'INDONESIA'
+            ],
+            '2021': [
+                6651, 36534, 5666, 7512, 3701, 13037, 3493, 9764, 1566, 2481,
+                29103, 7502, 8909, 4774, 19257, 3434, 2404, 6296, 4909, 4048,
+                2399, 4973, 4564, 971, 6215, 5139, 14636, 2431, 2445, 1500,
+                3139, 1008, 2784, 6236, 239481
+            ],
+            '2022': [
+                10137, 43555, 7691, 12389, 5359, 11453, 3613, 11022, 2072, 3358,
+                32534, 29485, 30060, 10591, 51905, 5038, 6304, 5296, 5991, 3975,
+                3189, 5016, 4221, 1280, 9618, 5453, 28679, 3828, 2488, 2027,
+                2383, 1220, 4083, 7584, 372897
+            ],
+            '2023': [
+                12420, 62278, 12722, 15777, 7432, 21335, 5579, 16608, 2211, 5074,
+                87426, 45694, 42304, 12061, 66741, 7392, 11916, 7550, 12692, 6028,
+                4420, 6375, 6762, 1701, 14265, 8944, 41196, 6276, 3574, 2679,
+                4741, 2334, 6410, 14074, 584991
+            ]
+        };
+
+        // Pengelompokan wilayah
+        function getRegion(area) {
+            const regions = {
+                'Sumatera': ['ACEH', 'SUMATERA UTARA', 'SUMATERA BARAT', 'RIAU', 'JAMBI', 
+                        'SUMATERA SELATAN', 'BENGKULU', 'LAMPUNG', 'KEP. BANGKA BELITUNG', 'KEP. RIAU'],
+                'Jawa': ['METRO JAYA', 'JAWA BARAT', 'JAWA TENGAH', 'DI YOGYAKARTA', 'JAWA TIMUR', 'BANTEN'],
+                'Bali & Nusa Tenggara': ['BALI', 'NUSA TENGGARA BARAT', 'NUSA TENGGARA TIMUR'],
+                'Kalimantan': ['KALIMANTAN BARAT', 'KALIMANTAN TENGAH', 'KALIMANTAN SELATAN', 
+                             'KALIMANTAN TIMUR', 'KALIMANTAN UTARA'],
+                'Sulawesi': ['SULAWESI UTARA', 'SULAWESI TENGAH', 'SULAWESI SELATAN', 
+                           'SULAWESI TENGGARA', 'GORONTALO', 'SULAWESI BARAT'],
+                'Maluku & Papua': ['MALUKU', 'MALUKU UTARA', 'PAPUA BARAT', 'PAPUA']
+            };
+            
+            for (const [region, areas] of Object.entries(regions)) {
+                if (areas.includes(area)) {
+                    return region;
+                }
+            }
+            return 'Lainnya';
+        }
+
+        // Menghitung total per wilayah
+        function calculateRegionTotals() {
+            const regionTotals = {};
+            
+            for (let i = 0; i < data.daerah.length; i++) {
+                const daerah = data.daerah[i];
+                if (daerah === 'INDONESIA') continue;
+                
+                const region = getRegion(daerah);
+                if (!regionTotals[region]) {
+                    regionTotals[region] = 0;
+                }
+                regionTotals[region] += data['2023'][i];
+            }
+            
+            return regionTotals;
+        }
+
+        // 1. Tren Nasional Chart
+        function createTrendChart() {
+            const indonesiaIndex = data.daerah.findIndex(d => d === 'INDONESIA');
+            const ctx = document.getElementById('trendChart').getContext('2d');
+            
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['2021', '2022', '2023'],
+                    datasets: [{
+                        label: 'Jumlah Tindak Pidana',
+                        data: [data['2021'][indonesiaIndex], data['2022'][indonesiaIndex], data['2023'][indonesiaIndex]],
+                        backgroundColor: ['rgba(54, 162, 235, 0.7)', 'rgba(54, 162, 235, 0.8)', 'rgba(54, 162, 235, 0.9)'],
+                        borderColor: ['rgba(54, 162, 235, 1)', 'rgba(54, 162, 235, 1)', 'rgba(54, 162, 235, 1)'],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return 'Jumlah: ' + context.parsed.y.toLocaleString();
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return value >= 1000 ? value/1000 + 'K' : value;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 2. Top 5 Regions Chart
+        function createTopRegionsChart() {
+            // Filter out 'INDONESIA' and get top 5
+            const regionalData = data.daerah.map((daerah, i) => ({
+                daerah: daerah,
+                value2023: data['2023'][i]
+            })).filter(item => item.daerah !== 'INDONESIA')
+              .sort((a, b) => b.value2023 - a.value2023)
+              .slice(0, 5);
+            
+            const ctx = document.getElementById('topRegionsChart').getContext('2d');
+            
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: regionalData.map(item => item.daerah),
+                    datasets: [{
+                        label: 'Tindak Pidana 2023',
+                        data: regionalData.map(item => item.value2023),
+                        backgroundColor: 'rgba(255, 99, 132, 0.7)',
+                        borderColor: 'rgba(255, 99, 132, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return 'Jumlah: ' + context.parsed.x.toLocaleString();
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return value >= 1000 ? value/1000 + 'K' : value;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 3. Region Pie Chart
+        function createRegionPieChart() {
+            const regionTotals = calculateRegionTotals();
+            const regions = Object.keys(regionTotals);
+            const values = regions.map(region => regionTotals[region]);
+            
+            const ctx = document.getElementById('regionPieChart').getContext('2d');
+            
+            new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: regions,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: [
+                            'rgba(255, 99, 132, 0.7)',
+                            'rgba(54, 162, 235, 0.7)',
+                            'rgba(255, 206, 86, 0.7)',
+                            'rgba(75, 192, 192, 0.7)',
+                            'rgba(153, 102, 255, 0.7)',
+                            'rgba(255, 159, 64, 0.7)'
+                        ],
+                        borderColor: [
+                            'rgba(255, 99, 132, 1)',
+                            'rgba(54, 162, 235, 1)',
+                            'rgba(255, 206, 86, 1)',
+                            'rgba(75, 192, 192, 1)',
+                            'rgba(153, 102, 255, 1)',
+                            'rgba(255, 159, 64, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.parsed || 0;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = ((value / total) * 100).toFixed(1);
+                                    return `${label}: ${percentage}% (${value.toLocaleString()} kasus)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 4. Growth Chart
+        function createGrowthChart() {
+            // Calculate growth percentage for each region
+            const growthData = data.daerah.map((daerah, i) => {
+                if (daerah === 'INDONESIA') return null;
+                
+                const growth = ((data['2023'][i] - data['2021'][i]) / data['2021'][i] * 100).toFixed(1);
+                return {
+                    daerah: daerah,
+                    growth: parseFloat(growth)
+                };
+            }).filter(item => item !== null)
+              .sort((a, b) => b.growth - a.growth)
+              .slice(0, 5);
+            
+            const ctx = document.getElementById('growthChart').getContext('2d');
+            
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: growthData.map(item => item.daerah),
+                    datasets: [{
+                        label: 'Persentase Kenaikan',
+                        data: growthData.map(item => item.growth),
+                        backgroundColor: 'rgba(75, 192, 192, 0.7)',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return 'Kenaikan: ' + context.parsed.y.toFixed(1) + '%';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return value + '%';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 5. Heatmap
+        function createHeatmap() {
+            // Prepare data - filter out Indonesia and sort by 2023 values
+            const filteredData = data.daerah.map((daerah, index) => ({
+                daerah,
+                '2021': data['2021'][index],
+                '2022': data['2022'][index],
+                '2023': data['2023'][index]
+            })).filter(d => d.daerah !== 'INDONESIA')
+              .sort((a, b) => b['2023'] - a['2023'])
+              .slice(0, 15); // Top 15 regions
+            
+            const years = ['2021', '2022', '2023'];
+            
+            // Set dimensions
+            const margin = {top: 40, right: 40, bottom: 80, left: 150},
+                width = 800 - margin.left - margin.right,
+                height = 450 - margin.top - margin.bottom;
+            
+            // Find max value for scaling
+            const maxValue = Math.max(...filteredData.flatMap(d => [d['2021'], d['2022'], d['2023']]));
+            
+            // Create color scale
+            const colorScale = d3.scaleSequential()
+                .domain([0, maxValue])
+                .interpolator(d3.interpolateBlues);
+            
+            // Remove existing SVG
+            d3.select("#heatmap svg").remove();
+            
+            // Create SVG
+            const svg = d3.select("#heatmap")
+                .append("svg")
+                    .attr("width", width + margin.left + margin.right)
+                    .attr("height", height + margin.top + margin.bottom)
+                .append("g")
+                    .attr("transform", `translate(${margin.left},${margin.top})`);
+            
+            // Create scales
+            const y = d3.scaleBand()
+                .range([0, height])
+                .domain(filteredData.map(d => d.daerah))
+                .padding(0.05);
+            
+            const x = d3.scaleBand()
+                .range([0, width])
+                .domain(years)
+                .padding(0.05);
+            
+            // Add X axis
+            svg.append("g")
+                .attr("transform", `translate(0,${height})`)
+                .call(d3.axisBottom(x))
+                .selectAll("text")
+                    .style("font-size", "12px");
+            
+            // Add Y axis
+            svg.append("g")
+                .call(d3.axisLeft(y))
+                .selectAll("text")
+                    .style("font-size", "12px");
+            
+            // Create tooltip
+            const tooltip = d3.select("#heatmapTooltip");
+            
+            // Add cells
+            svg.selectAll()
+                .data(filteredData.flatMap(d => years.map(year => ({
+                    daerah: d.daerah,
+                    year: year,
+                    value: d[year]
+                }))))
+                .join("rect")
+                    .attr("x", d => x(d.year))
+                    .attr("y", d => y(d.daerah))
+                    .attr("width", x.bandwidth())
+                    .attr("height", y.bandwidth())
+                    .attr("class", "heatmap-cell")
+                    .style("fill", d => colorScale(d.value))
+                    .on("mouseover", function(event, d) {
+                        tooltip.style("display", "block")
+                               .html(`<strong>${d.daerah}</strong><br>Tahun: ${d.year}<br>Jumlah: ${d.value.toLocaleString()}`);
+                        
+                        const [mouseX, mouseY] = d3.pointer(event, document.body);
+                        tooltip.style("left", `${mouseX + 10}px`)
+                               .style("top", `${mouseY + 10}px`);
+                    })
+                    .on("mouseout", function() {
+                        tooltip.style("display", "none");
+                    });
+            
+            // Add title
+            svg.append("text")
+                .attr("x", width / 2)
+                .attr("y", -10)
+                .attr("text-anchor", "middle")
+                .style("font-size", "16px")
+                .text("Heatmap 15 Daerah Tertinggi");
+            
+            // Add color legend
+            const legendWidth = 300;
+            const legendHeight = 15;
+            
+            const legend = svg.append("g")
+                .attr("transform", `translate(${width - legendWidth},${height + 40})`);
+            
+            // Create gradient
+            const defs = svg.append("defs");
+            const gradient = defs.append("linearGradient")
+                .attr("id", "heatmap-gradient")
+                .attr("x1", "0%")
+                .attr("x2", "100%")
+                .attr("y1", "0%")
+                .attr("y2", "0%");
+            
+            // Add color stops
+            const numStops = 10;
+            for (let i = 0; i <= numStops; i++) {
+                const offset = i / numStops;
+                const value = maxValue * offset;
+                gradient.append("stop")
+                    .attr("offset", `${offset * 100}%`)
+                    .attr("stop-color", colorScale(value));
+            }
+            
+            // Draw legend rectangle
+            legend.append("rect")
+                .attr("width", legendWidth)
+                .attr("height", legendHeight)
+                .style("fill", "url(#heatmap-gradient)");
+            
+            // Add legend ticks
+            const legendScale = d3.scaleLinear()
+                .domain([0, maxValue])
+                .range([0, legendWidth]);
+            
+            const legendAxis = d3.axisBottom(legendScale)
+                .ticks(5)
+                .tickFormat(d => d >= 1000 ? `${d/1000}K` : d);
+            
+            legend.append("g")
+                .attr("transform", `translate(0,${legendHeight})`)
+                .call(legendAxis);
+            
+            legend.append("text")
+                .attr("x", -10)
+                .attr("y", 8)
+                .style("text-anchor", "end")
+                .style("font-size", "12px")
+                .text("Jumlah:");
+        }
+
+        // Initialize all charts
+        window.onload = function() {
+            createTrendChart();
+            createTopRegionsChart();
+            createRegionPieChart();
+            createHeatmap();
+            createGrowthChart();
+        };
+    </script>
+</body>
+</html>
